@@ -18,9 +18,18 @@ def get_train_val(filepath: str, val_size=0.2):
     
     # Replace 1 with 0 (for cats) and 2 with 1 (for dogs)
     df['species'] = df['species'].replace({1: 0, 2: 1})
-    train_df, val_df = train_test_split(df, test_size=val_size, stratify=df['species'], shuffle=True, random_state=42)
-    return train_df, val_df
+    # Define the mapping dictionary
+    label_mapping_breed = {i: i - 1 for i in range(1, 26)} # if there are 25 labels
+    # Replace the labels in the 'species' column using the mapping dictionary
+    df['breed'] = df['breed'].replace(label_mapping_breed)
 
+    label_mapping_class = {i: i - 1 for i in range(1, 38)} # if there are 37 labels
+    # Replace the labels in the 'species' column using the mapping dictionary
+    df['class_id'] = df['class_id'].replace(label_mapping_class)
+
+    #train_df, val_df = train_test_split(df, test_size=val_size, stratify=df['species'], shuffle=True, random_state=42)
+    train_df, val_df = train_test_split(df, test_size=val_size, stratify=df['class_id'], shuffle=True, random_state=42)
+    return train_df, val_df
 
 def load_and_transform_image(image_path):
     """ Load an image and apply the transformations. """
@@ -41,17 +50,18 @@ def create_dataset(df, base_path):
     images_tensors = []
     Y = []
     for row in df.values.tolist():
-        image_id, species_id = row[0], row[2]
+        #image_id, species_id = row[0], row[2]
+        image_id, class_id = row[0], row[1]
         image_path = f"{base_path}{image_id}.jpg"  # Adjust format as needed
         image_tensor = load_and_transform_image(image_path)
         images_tensors.append(image_tensor)
-        Y.append(species_id)
+        #Y.append(species_id)
+        Y.append(class_id)
     
     # Stack all tensors to create a single tensor
     X = torch.stack(images_tensors)
     Y = torch.tensor(np.array(Y))
     return X, Y
-
 
 def show_images(images, labels, n_images=None, figsize=(8, 8)):
     """
