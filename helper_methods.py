@@ -5,6 +5,8 @@ import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 import torch
 import numpy as np
+from torchvision.transforms import RandomErasing
+
 
 
 def get_train_val(filepath: str, val_size=0.2):
@@ -31,18 +33,18 @@ def get_train_val(filepath: str, val_size=0.2):
     train_df, val_df = train_test_split(df, test_size=val_size, stratify=df['class_id'], shuffle=True, random_state=42)
     return train_df, val_df
 
-def load_and_transform_image(image_path):
-    """ Load an image and apply the transformations. """
+# def load_and_transform_image(image_path):
+#     """ Load an image and apply the transformations. """
     
-    # Define the transformations (we use the same as what Resnet used for efficient transfer)
-    transform = transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
-    image = Image.open(image_path).convert('RGB')  # Convert all images to RGB
-    return transform(image)
+#     # Define the transformations (we use the same as what Resnet used for efficient transfer)
+#     transform = transforms.Compose([
+#         transforms.Resize(256),
+#         transforms.CenterCrop(224),
+#         transforms.ToTensor(),
+#         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+#     ])
+#     image = Image.open(image_path).convert('RGB')  # Convert all images to RGB
+#     return transform(image)
 
 
 # Function to create a tensor dataset from DataFrame and transformations
@@ -88,3 +90,80 @@ def show_images(images, labels, n_images=None, figsize=(8, 8)):
 
     plt.tight_layout()
     plt.show()
+
+    
+
+def get_train_val_mltclass(filepath: str, val_size=0.2):
+    data = []
+    with open(file=filepath) as f:
+        for row in f.readlines():
+            row = row.strip().split(' ')
+            row[1], row[2], row[3] = int(row[1]), int(row[2]), int(row[3])
+            data.append(row)
+    df = pd.DataFrame(data=data, columns=['image_id', 'class_id', 'species', 'breed'])
+        
+    # Replace 1 with 0 (for cats) and 2 with 1 (for dogs)
+    df['species'] = df['species'].replace({1: 0, 2: 1})
+    train_df, val_df = train_test_split(df, test_size=val_size, stratify=df['breed'], shuffle=True, random_state=42)
+    return train_df, val_df
+    
+
+def get_test(filepath: str):
+    data = []
+    with open(file=filepath) as f:
+        for row in f.readlines():
+            row = row.strip().split(' ')
+            row[1], row[2], row[3] = int(row[1]), int(row[2]), int(row[3])
+            data.append(row)
+    df = pd.DataFrame(data=data, columns=['image_id', 'class_id', 'species', 'breed'])
+    
+    # Replace 1 with 0 (for cats) and 2 with 1 (for dogs)
+    df['species'] = df['species'].replace({1: 0, 2: 1})
+    return df
+
+
+#data augmentation mehtods
+def load_and_transform_image(image_path, augment=False):
+    # Define the basic transformations
+    basic_transform = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+    
+    # Define the augmentation transformations
+    augmentation_transform = transforms.Compose([
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(30),
+        transforms.RandomResizedCrop(224, scale=(0.8, 1.0)),
+        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        RandomErasing(p=0.5, scale=(0.02, 0.33), ratio=(0.3, 3.3))  # Adding RandomErasing with probability 0.5
+    ])
+    
+    # Choose which transformation to apply
+    if augment:
+        transform = augmentation_transform
+    else:
+        transform = basic_transform
+
+    image = Image.open(image_path).convert('RGB')  
+    return transform(image)
+
+
+def create_dataset_mltclass(df, base_path, augment=False):
+    images_tensors = []
+    Y = []
+    for row in df.values.tolist():
+        image_id, breed_id = row[0], row[3] 
+        image_path = f"{base_path}{image_id}.jpg" 
+        image_tensor = load_and_transform_image(image_path, augment=augment)
+        images_tensors.append(image_tensor)
+        Y.append(breed_id)
+    
+    # Stack all tensors to create a single tensor
+    X = torch.stack(images_tensors)
+    Y = torch.tensor(np.array(Y))
+    return X, Y
