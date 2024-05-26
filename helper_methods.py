@@ -19,11 +19,11 @@ def get_train_val(filepath: str, val_size=0.2):
     df = pd.DataFrame(data=data, columns=['image_id', 'class_id', 'species', 'breed'])
     
     # Replace 1 with 0 (for cats) and 2 with 1 (for dogs)
-    df['species'] = df['species'].replace({1: 0, 2: 1})
+    #df['species'] = df['species'].replace({1: 0, 2: 1})
     # Define the mapping dictionary
     label_mapping_breed = {i: i - 1 for i in range(1, 26)} # if there are 25 labels
     # Replace the labels in the 'species' column using the mapping dictionary
-    df['breed'] = df['breed'].replace(label_mapping_breed)
+    #df['breed'] = df['breed'].replace(label_mapping_breed)
 
     label_mapping_class = {i: i - 1 for i in range(1, 38)} # if there are 37 labels
     # Replace the labels in the 'species' column using the mapping dictionary
@@ -103,8 +103,12 @@ def get_train_val_mltclass(filepath: str, val_size=0.2):
     df = pd.DataFrame(data=data, columns=['image_id', 'class_id', 'species', 'breed'])
         
     # Replace 1 with 0 (for cats) and 2 with 1 (for dogs)
-    df['species'] = df['species'].replace({1: 0, 2: 1})
-    train_df, val_df = train_test_split(df, test_size=val_size, stratify=df['breed'], shuffle=True, random_state=42)
+    #df['species'] = df['species'].replace({1: 0, 2: 1})
+    label_mapping_class = {i: i - 1 for i in range(1, 38)} # if there are 37 labels
+    # Replace the labels in the 'species' column using the mapping dictionary
+    df['class_id'] = df['class_id'].replace(label_mapping_class)
+
+    train_df, val_df = train_test_split(df, test_size=val_size, stratify=df['class_id'], shuffle=True, random_state=42)
     return train_df, val_df
     
 
@@ -118,7 +122,13 @@ def get_test(filepath: str):
     df = pd.DataFrame(data=data, columns=['image_id', 'class_id', 'species', 'breed'])
     
     # Replace 1 with 0 (for cats) and 2 with 1 (for dogs)
-    df['species'] = df['species'].replace({1: 0, 2: 1})
+    #df['species'] = df['species'].replace({1: 0, 2: 1})
+
+
+    label_mapping_class = {i: i - 1 for i in range(1, 38)} # if there are 37 labels
+    # Replace the labels in the 'species' column using the mapping dictionary
+    df['class_id'] = df['class_id'].replace(label_mapping_class)
+
     return df
 
 
@@ -157,7 +167,7 @@ def create_dataset_mltclass(df, base_path, augment=False):
     images_tensors = []
     Y = []
     for row in df.values.tolist():
-        image_id, breed_id = row[0], row[3] 
+        image_id, breed_id = row[0], row[1] 
         image_path = f"{base_path}{image_id}.jpg" 
         image_tensor = load_and_transform_image(image_path, augment=augment)
         images_tensors.append(image_tensor)
